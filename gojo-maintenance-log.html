@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GOJO Equipment & Truck Maintenance Log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#1A4A73;
+    --navy-dark:#123853;
+    --gold:#C9A227;
+    --bg:#f2f5f7;
+    --card:#ffffff;
+    --line:#dfe6ec;
+    --text:#1c2b36;
+    --muted:#6b7c88;
+    --danger:#c0392b;
+    --ok:#2e7d32;
+    --warn:#b8860b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-tap-highlight-color:transparent;
+  }
+  header{
+    background:linear-gradient(135deg,var(--navy),var(--navy-dark));
+    color:#fff;
+    padding:16px 18px;
+    position:sticky; top:0; z-index:20;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  header h1{margin:0; font-size:17px; font-weight:700; letter-spacing:.3px;}
+  header p{margin:2px 0 0; font-size:11.5px; opacity:.85;}
+
+  #pinScreen{
+    position:fixed; inset:0; background:linear-gradient(160deg,var(--navy),var(--navy-dark));
+    display:flex; align-items:center; justify-content:center; z-index:999; flex-direction:column;
+    color:#fff; padding:24px;
+  }
+  #pinScreen h2{margin:0 0 4px; font-size:18px;}
+  #pinScreen p{margin:0 0 22px; opacity:.8; font-size:13px;}
+  #pinDots{display:flex; gap:14px; margin-bottom:22px;}
+  .dot{width:16px; height:16px; border-radius:50%; border:2px solid #fff; background:transparent;}
+  .dot.filled{background:var(--gold); border-color:var(--gold);}
+  #pinPad{display:grid; grid-template-columns:repeat(3,72px); gap:14px;}
+  #pinPad button{
+    height:60px; border-radius:50%; border:1px solid rgba(255,255,255,.35);
+    background:rgba(255,255,255,.08); color:#fff; font-size:20px; font-weight:600;
+  }
+  #pinPad button:active{background:rgba(255,255,255,.25);}
+  #pinError{color:#ff8a80; font-size:12.5px; height:16px; margin-top:10px;}
+
+  #app{display:none; max-width:900px; margin:0 auto; padding-bottom:90px;}
+
+  .tabs{display:flex; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:60px; z-index:15;}
+  .tab{flex:1; text-align:center; padding:12px 6px; font-size:12.5px; font-weight:700; color:var(--muted); border-bottom:3px solid transparent; cursor:pointer;}
+  .tab.active{color:var(--navy); border-bottom-color:var(--gold);}
+
+  .view{display:none; padding:14px;}
+  .view.active{display:block;}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .card h3{margin:0 0 12px; font-size:14px; color:var(--navy); border-bottom:1px solid var(--line); padding-bottom:8px;}
+
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:5px;}
+  .field .req{color:var(--danger);}
+  input[type=text],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select,textarea{
+    width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:8px; font-size:14px; background:#fbfcfd; color:var(--text);
+  }
+  textarea{resize:vertical; min-height:56px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .checklist{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .chk{display:flex; align-items:center; gap:8px; background:#fbfcfd; border:1px solid var(--line); border-radius:8px; padding:9px 10px;}
+  .chk input{width:18px; height:18px;}
+  .chk label{margin:0; font-size:12.5px; font-weight:600; color:var(--text);}
+
+  .photoBox{display:flex; align-items:center; gap:10px;}
+  .photoBox img{width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid var(--line); display:none;}
+  .photoBtn{background:#eef3f7; border:1px dashed #b7c6d1; color:var(--navy); padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:600;}
+
+  .btnPrimary{width:100%; background:var(--navy); color:#fff; border:none; padding:13px; border-radius:9px; font-size:14.5px; font-weight:700; margin-top:6px;}
+  .btnPrimary:active{background:var(--navy-dark);}
+  .btnGhost{background:#fff; border:1px solid var(--line); color:var(--text); padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:600;}
+
+  .entry{background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px;}
+  .entry-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .entry-title{font-weight:700; font-size:13.5px; color:var(--navy);}
+  .entry-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
+  .badge{font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap;}
+  .b-ok{background:#e4f4e4; color:var(--ok);}
+  .b-mon{background:#fff4e0; color:var(--warn);}
+  .b-repair{background:#fde8e6; color:var(--danger);}
+  .b-parts{background:#eee6fb; color:#6a3fb5;}
+  .b-oem{background:#e3edfb; color:#2f5fa8;}
+  .b-oos{background:#eee; color:#555;}
+  .entry-body{font-size:12.5px; color:var(--text); margin-top:8px; line-height:1.5;}
+  .entry-actions{display:flex; gap:8px; margin-top:10px;}
+  .entry-actions button{flex:1; font-size:11.5px; padding:7px; border-radius:7px; border:1px solid var(--line); background:#fbfcfd;}
+  .del{color:var(--danger); border-color:#f2c9c4 !important;}
+
+  .toolbar{display:flex; gap:8px; margin-bottom:12px;}
+  .toolbar input{flex:1;}
+  .empty{text-align:center; color:var(--muted); font-size:13px; padding:40px 10px;}
+
+  .fab{position:fixed; bottom:18px; right:18px; left:18px; max-width:864px; margin:0 auto; z-index:30;}
+  .fab button{width:100%; background:var(--gold); color:#3a2e00; border:none; padding:14px; border-radius:12px; font-size:14.5px; font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,.2);}
+
+  .toast{position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:10px 18px; border-radius:20px; font-size:13px; z-index:60; opacity:0; transition:opacity .25s;}
+  .toast.show{opacity:1;}
+
+  .modalBg{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:none; align-items:flex-end;}
+  .modalBg.show{display:flex;}
+  .modal{background:#fff; width:100%; max-height:90vh; overflow:auto; border-radius:16px 16px 0 0; padding:18px;}
+  .modal h3{margin-top:0; color:var(--navy);}
+  .closeModal{float:right; background:none; border:none; font-size:20px; color:var(--muted);}
+</style>
+</head>
+<body>
+
+<div id="pinScreen">
+  <h2>GOJO Maintenance Log</h2>
+  <p>Enter PIN to continue</p>
+  <div id="pinDots"></div>
+  <div id="pinPad"></div>
+  <div id="pinError"></div>
+</div>
+
+<div id="app">
+  <header>
+    <h1>Equipment / Truck Diagnostic, Maintenance &amp; Repair Log</h1>
+    <p>GOJO Investment (SL) Ltd — Fleet Maintenance Control Register</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-view="repairForm">+ Repair / Fault</div>
+    <div class="tab" data-view="pmForm">+ Preventive Service</div>
+    <div class="tab" data-view="list">Records</div>
+  </div>
+
+  <!-- REPAIR / DIAGNOSTIC FORM -->
+  <div class="view active" id="repairForm">
+    <div class="card">
+      <h3>Fault Report / Repair Entry</h3>
+
+      <div class="field">
+        <label>Site / Project</label>
+        <input type="text" id="r_site" placeholder="e.g. Numbara DSO">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Equipment / Truck (Make &amp; Model)<span class="req">*</span></label>
+          <input type="text" id="r_makeModel" placeholder="e.g. Sinotruk HOWO">
+        </div>
+        <div class="field">
+          <label>VIN / Serial No.</label>
+          <input type="text" id="r_vin">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Hour Meter / Odometer</label>
+          <input type="text" id="r_hourMeter" placeholder="e.g. 12,340 km">
+        </div>
+        <div class="field">
+          <label>Operator</label>
+          <input type="text" id="r_operator">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Fault / Complaint<span class="req">*</span></label>
+        <textarea id="r_fault" placeholder="What was reported?"></textarea>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Fault / Warning Code</label>
+          <input type="text" id="r_faultCode">
+        </div>
+        <div class="field">
+          <label>Breakdown Location</label>
+          <input type="text" id="r_breakdownLoc">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Initial Diagnosis</label>
+        <textarea id="r_initialDiag"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Root Cause</label>
+        <textarea id="r_rootCause"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Repair / Corrective Action</label>
+        <textarea id="r_repairAction"></textarea>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Parts Replaced / Part No.</label>
+          <input type="text" id="r_parts">
+        </div>
+        <div class="field">
+          <label>Qty</label>
+          <input type="number" id="r_qty" min="0">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Technician / Mechanic</label>
+        <input type="text" id="r_tech">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Repair Start Date &amp; Time</label>
+          <input type="datetime-local" id="r_startDT">
+        </div>
+        <div class="field">
+          <label>Completion Date &amp; Time</label>
+          <input type="datetime-local" id="r_endDT">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Downtime Hours</label>
+        <input type="text" id="r_downtime" placeholder="auto-calculated, or edit manually">
+      </div>
+
+      <div class="field">
+        <label>Final Status<span class="req">*</span></label>
+        <select id="r_status">
+          <option value="">Select status</option>
+          <option>Operational</option>
+          <option>Monitoring</option>
+          <option>Under Repair</option>
+          <option>Awaiting Parts</option>
+          <option>Awaiting OEM/Technical Support</option>
+          <option>Out of Service</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Next Service</label>
+        <input type="text" id="r_nextService" placeholder="date or hour-meter target">
+      </div>
+
+      <div class="field">
+        <label>Photo (fault / part / receipt)</label>
+        <div class="photoBox">
+          <button type="button" class="photoBtn" onclick="document.getElementById('r_photoInput').click()">📷 Add Photo</button>
+          <input type="file" id="r_photoInput" accept="image/*" capture="environment" style="display:none">
+          <img id="r_photoPreview">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Logged By</label>
+        <input type="text" id="r_loggedBy" placeholder="your name">
+      </div>
+
+      <button class="btnPrimary" onclick="saveRepair()">Save Repair Entry</button>
+    </div>
+  </div>
+
+  <!-- PREVENTIVE MAINTENANCE FORM -->
+  <div class="view" id="pmForm">
+    <div class="card">
+      <h3>Preventive Maintenance / Service Entry</h3>
+
+      <div class="field">
+        <label>Site / Project</label>
+        <input type="text" id="p_site">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Equipment ID<span class="req">*</span></label>
+          <input type="text" id="p_equipId">
+        </div>
+        <div class="field">
+          <label>Make / Model</label>
+          <input type="text" id="p_makeModel">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Hour Meter / Odometer</label>
+          <input type="text" id="p_hourMeter">
+        </div>
+        <div class="field">
+          <label>Service Type</label>
+          <input type="text" id="p_serviceType" placeholder="e.g. 250hr Service">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Items Serviced</label>
+        <div class="checklist">
+          <div class="chk"><input type="checkbox" id="p_engineOil"><label for="p_engineOil">Engine Oil</label></div>
+          <div class="chk"><input type="checkbox" id="p_oilFilter"><label for="p_oilFilter">Oil Filter</label></div>
+          <div class="chk"><input type="checkbox" id="p_fuelFilter"><label for="p_fuelFilter">Fuel Filter</label></div>
+          <div class="chk"><input type="checkbox" id="p_airFilter"><label for="p_airFilter">Air Filter</label></div>
+          <div class="chk"><input type="checkbox" id="p_transDiff"><label for="p_transDiff">Transmission / Diff.</label></div>
+          <div class="chk"><input type="checkbox" id="p_hydraulic"><label for="p_hydraulic">Hydraulic System</label></div>
+          <div class="chk"><input type="checkbox" id="p_coolant"><label for="p_coolant">Coolant</label></div>
+          <div class="chk"><input type="checkbox" id="p_brakes"><label for="p_brakes">Brakes</label></div>
+          <div class="chk"><input type="checkbox" id="p_tyres"><label for="p_tyres">Tyres / Tracks</label></div>
+          <div class="chk"><input type="checkbox" id="p_electrical"><label for="p_electrical">Electrical</label></div>
+          <div class="chk"><input type="checkbox" id="p_greasing"><label for="p_greasing">Greasing</label></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Other Work / Observations</label>
+        <textarea id="p_other"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Parts Used</label>
+        <input type="text" id="p_partsUsed">
+      </div>
+
+      <div class="field">
+        <label>Technician</label>
+        <input type="text" id="p_tech">
+      </div>
+
+      <div class="field">
+        <label>Next Service Due</label>
+        <input type="text" id="p_nextDue" placeholder="date or hour-meter target">
+      </div>
+
+      <div class="field">
+        <label>Photo</label>
+        <div class="photoBox">
+          <button type="button" class="photoBtn" onclick="document.getElementById('p_photoInput').click()">📷 Add Photo</button>
+          <input type="file" id="p_photoInput" accept="image/*" capture="environment" style="display:none">
+          <img id="p_photoPreview">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Logged By</label>
+        <input type="text" id="p_loggedBy">
+      </div>
+
+      <button class="btnPrimary" onclick="savePM()">Save Service Entry</button>
+    </div>
+  </div>
+
+  <!-- RECORDS LIST -->
+  <div class="view" id="list">
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Search equipment, fault, technician...">
+      <button class="btnGhost" onclick="exportExcel()">⬇ Excel</button>
+    </div>
+    <div id="entriesContainer"></div>
+  </div>
+</div>
+
+<div class="fab" id="quickFab" style="display:none;">
+  <button onclick="switchView('repairForm')">+ New Repair Entry</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modalBg" id="detailModal">
+  <div class="modal">
+    <button class="closeModal" onclick="closeModal()">×</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- CONFIG ---------- */
+const APP_PIN = "1234"; // change this to your preferred PIN
+const STORAGE_KEY = "gojo_maintenance_log_entries_v1";
+
+/* ---------- PIN LOCK ---------- */
+let enteredPin = "";
+function buildPinPad(){
+  const pad = document.getElementById('pinPad');
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','del'];
+  pad.innerHTML = "";
+  keys.forEach(k=>{
+    const btn = document.createElement('button');
+    if(k===''){ btn.style.visibility='hidden'; }
+    else if(k==='del'){ btn.textContent='⌫'; btn.onclick=()=>{enteredPin=enteredPin.slice(0,-1); renderDots();}; }
+    else { btn.textContent=k; btn.onclick=()=>{ if(enteredPin.length<4){enteredPin+=k; renderDots(); if(enteredPin.length===4) checkPin();} }; }
+    pad.appendChild(btn);
+  });
+}
+function renderDots(){
+  const dots = document.getElementById('pinDots');
+  dots.innerHTML = "";
+  for(let i=0;i<4;i++){
+    const d = document.createElement('div');
+    d.className = 'dot' + (i<enteredPin.length ? ' filled':'');
+    dots.appendChild(d);
+  }
+}
+function checkPin(){
+  if(enteredPin===APP_PIN){
+    document.getElementById('pinScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('quickFab').style.display='block';
+    renderEntries();
+  } else {
+    document.getElementById('pinError').textContent = "Incorrect PIN, try again";
+    enteredPin="";
+    setTimeout(renderDots,150);
+    setTimeout(()=>{document.getElementById('pinError').textContent="";},1500);
+  }
+}
+buildPinPad(); renderDots();
+
+/* ---------- TABS / VIEWS ---------- */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=> switchView(t.dataset.view);
+});
+function switchView(view){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===view));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id===view));
+  if(view==='list') renderEntries();
+}
+
+/* ---------- PHOTO PREVIEW ---------- */
+function setupPhoto(inputId, previewId){
+  document.getElementById(inputId).addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const img = document.getElementById(previewId);
+      img.src = ev.target.result;
+      img.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+}
+setupPhoto('r_photoInput','r_photoPreview');
+setupPhoto('p_photoInput','p_photoPreview');
+
+/* ---------- DOWNTIME AUTO-CALC ---------- */
+function calcDowntime(){
+  const s = document.getElementById('r_startDT').value;
+  const e = document.getElementById('r_endDT').value;
+  if(s && e){
+    const diffMs = new Date(e) - new Date(s);
+    if(diffMs > 0){
+      const hrs = (diffMs/3600000).toFixed(1);
+      document.getElementById('r_downtime').value = hrs + " hrs";
+    }
+  }
+}
+document.getElementById('r_startDT').addEventListener('change', calcDowntime);
+document.getElementById('r_endDT').addEventListener('change', calcDowntime);
+
+/* ---------- STORAGE ---------- */
+function getEntries(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch(e){ return []; }
+}
+function saveEntries(list){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function clearImg(id){ const img=document.getElementById(id); img.src=''; img.style.display='none'; }
+
+/* ---------- SAVE REPAIR ---------- */
+function saveRepair(){
+  const makeModel = document.getElementById('r_makeModel').value.trim();
+  const fault = document.getElementById('r_fault').value.trim();
+  const status = document.getElementById('r_status').value;
+  if(!makeModel || !fault || !status){
+    showToast("Please fill Equipment, Fault, and Final Status");
+    return;
+  }
+  const entry = {
+    id: Date.now(),
+    type: "repair",
+    createdAt: new Date().toISOString(),
+    site: document.getElementById('r_site').value.trim(),
+    makeModel,
+    vin: document.getElementById('r_vin').value.trim(),
+    hourMeter: document.getElementById('r_hourMeter').value.trim(),
+    operator: document.getElementById('r_operator').value.trim(),
+    fault,
+    faultCode: document.getElementById('r_faultCode').value.trim(),
+    breakdownLoc: document.getElementById('r_breakdownLoc').value.trim(),
+    initialDiag: document.getElementById('r_initialDiag').value.trim(),
+    rootCause: document.getElementById('r_rootCause').value.trim(),
+    repairAction: document.getElementById('r_repairAction').value.trim(),
+    parts: document.getElementById('r_parts').value.trim(),
+    qty: document.getElementById('r_qty').value.trim(),
+    tech: document.getElementById('r_tech').value.trim(),
+    startDT: document.getElementById('r_startDT').value,
+    endDT: document.getElementById('r_endDT').value,
+    downtime: document.getElementById('r_downtime').value.trim(),
+    status,
+    nextService: document.getElementById('r_nextService').value.trim(),
+    photo: document.getElementById('r_photoPreview').src && document.getElementById('r_photoPreview').style.display!=='none' ? document.getElementById('r_photoPreview').src : "",
+    loggedBy: document.getElementById('r_loggedBy').value.trim()
+  };
+  const list = getEntries();
+  list.unshift(entry);
+  saveEntries(list);
+
+  document.querySelectorAll('#repairForm input[type=text], #repairForm input[type=number], #repairForm textarea, #repairForm input[type=datetime-local]').forEach(el=>el.value='');
+  document.getElementById('r_status').value='';
+  clearImg('r_photoPreview');
+
+  showToast("Repair entry saved");
+  switchView('list');
+}
+
+/* ---------- SAVE PM ---------- */
+function savePM(){
+  const equipId = document.getElementById('p_equipId').value.trim();
+  if(!equipId){
+    showToast("Please enter Equipment ID");
+    return;
+  }
+  const items = [];
+  [['p_engineOil','Engine Oil'],['p_oilFilter','Oil Filter'],['p_fuelFilter','Fuel Filter'],['p_airFilter','Air Filter'],
+   ['p_transDiff','Transmission/Diff.'],['p_hydraulic','Hydraulic System'],['p_coolant','Coolant'],['p_brakes','Brakes'],
+   ['p_tyres','Tyres/Tracks'],['p_electrical','Electrical'],['p_greasing','Greasing']].forEach(([id,label])=>{
+    if(document.getElementById(id).checked) items.push(label);
+  });
+  const entry = {
+    id: Date.now(),
+    type: "pm",
+    createdAt: new Date().toISOString(),
+    site: document.getElementById('p_site').value.trim(),
+    equipId,
+    makeModel: document.getElementById('p_makeModel').value.trim(),
+    hourMeter: document.getElementById('p_hourMeter').value.trim(),
+    serviceType: document.getElementById('p_serviceType').value.trim(),
+    itemsServiced: items.join(", "),
+    other: document.getElementById('p_other').value.trim(),
+    partsUsed: document.getElementById('p_partsUsed').value.trim(),
+    tech: document.getElementById('p_tech').value.trim(),
+    nextDue: document.getElementById('p_nextDue').value.trim(),
+    photo: document.getElementById('p_photoPreview').src && document.getElementById('p_photoPreview').style.display!=='none' ? document.getElementById('p_photoPreview').src : "",
+    loggedBy: document.getElementById('p_loggedBy').value.trim()
+  };
+  const list = getEntries();
+  list.unshift(entry);
+  saveEntries(list);
+
+  document.querySelectorAll('#pmForm input[type=text], #pmForm textarea').forEach(el=>el.value='');
+  document.querySelectorAll('#pmForm input[type=checkbox]').forEach(el=>el.checked=false);
+  clearImg('p_photoPreview');
+
+  showToast("Service entry saved");
+  switchView('list');
+}
+
+/* ---------- BADGE HELPER ---------- */
+function statusBadge(status){
+  const map = {
+    "Operational":"b-ok", "Monitoring":"b-mon", "Under Repair":"b-repair",
+    "Awaiting Parts":"b-parts", "Awaiting OEM/Technical Support":"b-oem", "Out of Service":"b-oos"
+  };
+  return `<span class="badge ${map[status]||'b-oos'}">${status}</span>`;
+}
+
+/* ---------- RENDER LIST ---------- */
+function renderEntries(filter){
+  const container = document.getElementById('entriesContainer');
+  let list = getEntries();
+  if(filter){
+    const f = filter.toLowerCase();
+    list = list.filter(e => JSON.stringify(e).toLowerCase().includes(f));
+  }
+  if(list.length===0){
+    container.innerHTML = '<div class="empty">No entries yet. Use the tabs above to log a repair or service.</div>';
+    return;
+  }
+  container.innerHTML = list.map(e=>{
+    const dateStr = new Date(e.createdAt).toLocaleString();
+    if(e.type==='repair'){
+      return `<div class="entry">
+        <div class="entry-top">
+          <div>
+            <div class="entry-title">${e.makeModel || 'Unknown Equipment'}</div>
+            <div class="entry-sub">${dateStr}${e.site ? ' · '+e.site : ''}</div>
+          </div>
+          ${statusBadge(e.status)}
+        </div>
+        <div class="entry-body">
+          <b>Fault:</b> ${e.fault || '-'}<br>
+          ${e.tech ? '<b>Technician:</b> '+e.tech+'<br>' : ''}
+          ${e.downtime ? '<b>Downtime:</b> '+e.downtime : ''}
+        </div>
+        <div class="entry-actions">
+          <button onclick="viewEntry(${e.id})">View</button>
+          <button class="del" onclick="deleteEntry(${e.id})">Delete</button>
+        </div>
+      </div>`;
+    } else {
+      return `<div class="entry">
+        <div class="entry-top">
+          <div>
+            <div class="entry-title">${e.equipId} ${e.makeModel ? '— '+e.makeModel : ''}</div>
+            <div class="entry-sub">${dateStr}${e.site ? ' · '+e.site : ''}</div>
+          </div>
+          <span class="badge b-ok">PM Service</span>
+        </div>
+        <div class="entry-body">
+          <b>Service Type:</b> ${e.serviceType || '-'}<br>
+          ${e.itemsServiced ? '<b>Items:</b> '+e.itemsServiced : ''}
+        </div>
+        <div class="entry-actions">
+          <button onclick="viewEntry(${e.id})">View</button>
+          <button class="del" onclick="deleteEntry(${e.id})">Delete</button>
+        </div>
+      </div>`;
+    }
+  }).join('');
+}
+document.getElementById('searchBox').addEventListener('input', e=> renderEntries(e.target.value));
+
+/* ---------- VIEW / DELETE ---------- */
+function viewEntry(id){
+  const e = getEntries().find(x=>x.id===id);
+  if(!e) return;
+  let html = `<h3>${e.type==='repair' ? 'Repair / Fault Entry' : 'Preventive Service Entry'}</h3>`;
+  const rows = e.type==='repair' ? [
+    ['Site/Project', e.site], ['Equipment', e.makeModel], ['VIN/Serial', e.vin], ['Hour Meter/Odometer', e.hourMeter],
+    ['Operator', e.operator], ['Fault/Complaint', e.fault], ['Fault Code', e.faultCode], ['Breakdown Location', e.breakdownLoc],
+    ['Initial Diagnosis', e.initialDiag], ['Root Cause', e.rootCause], ['Repair Action', e.repairAction],
+    ['Parts Replaced', e.parts], ['Qty', e.qty], ['Technician', e.tech], ['Start', e.startDT], ['Completion', e.endDT],
+    ['Downtime', e.downtime], ['Status', e.status], ['Next Service', e.nextService], ['Logged By', e.loggedBy]
+  ] : [
+    ['Site/Project', e.site], ['Equipment ID', e.equipId], ['Make/Model', e.makeModel], ['Hour Meter/Odometer', e.hourMeter],
+    ['Service Type', e.serviceType], ['Items Serviced', e.itemsServiced], ['Other Work', e.other],
+    ['Parts Used', e.partsUsed], ['Technician', e.tech], ['Next Service Due', e.nextDue], ['Logged By', e.loggedBy]
+  ];
+  html += '<div style="font-size:13px; line-height:1.7;">' + rows.filter(r=>r[1]).map(r=>`<b>${r[0]}:</b> ${r[1]}`).join('<br>') + '</div>';
+  if(e.photo){ html += `<img src="${e.photo}" style="width:100%; border-radius:8px; margin-top:12px;">`; }
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+function closeModal(){ document.getElementById('detailModal').classList.remove('show'); }
+function deleteEntry(id){
+  if(!confirm("Delete this entry?")) return;
+  const list = getEntries().filter(e=>e.id!==id);
+  saveEntries(list);
+  renderEntries(document.getElementById('searchBox').value);
+  showToast("Entry deleted");
+}
+
+/* ---------- EXCEL EXPORT ---------- */
+function exportExcel(){
+  const list = getEntries();
+  if(list.length===0){ showToast("No entries to export"); return; }
+
+  const repairRows = list.filter(e=>e.type==='repair').map(e=>({
+    "Date/Time Logged": new Date(e.createdAt).toLocaleString(),
+    "Site/Project": e.site, "Equipment/Make-Model": e.makeModel, "VIN/Serial No.": e.vin,
+    "Hour Meter/Odometer": e.hourMeter, "Operator": e.operator, "Fault/Complaint": e.fault,
+    "Fault/Warning Code": e.faultCode, "Breakdown Location": e.breakdownLoc, "Initial Diagnosis": e.initialDiag,
+    "Root Cause": e.rootCause, "Repair/Corrective Action": e.repairAction, "Parts Replaced/Part No.": e.parts,
+    "Qty": e.qty, "Technician/Mechanic": e.tech, "Repair Start": e.startDT, "Completion": e.endDT,
+    "Downtime Hours": e.downtime, "Final Status": e.status, "Next Service": e.nextService, "Logged By": e.loggedBy
+  }));
+
+  const pmRows = list.filter(e=>e.type==='pm').map(e=>({
+    "Date/Time Logged": new Date(e.createdAt).toLocaleString(),
+    "Site/Project": e.site, "Equipment ID": e.equipId, "Make/Model": e.makeModel, "Hour Meter/Odometer": e.hourMeter,
+    "Service Type": e.serviceType, "Items Serviced": e.itemsServiced, "Other Work/Observations": e.other,
+    "Parts Used": e.partsUsed, "Technician": e.tech, "Next Service Due": e.nextDue, "Logged By": e.loggedBy
+  }));
+
+  const wb = XLSX.utils.book_new();
+  if(repairRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repairRows), "Repair-Diagnostic Log");
+  }
+  if(pmRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pmRows), "Preventive Maintenance Log");
+  }
+  if(!repairRows.length && !pmRows.length){
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([]), "Log");
+  }
+  const filename = "GOJO_Maintenance_Log_" + new Date().toISOString().slice(0,10) + ".xlsx";
+  XLSX.writeFile(wb, filename);
+  showToast("Excel file downloaded");
+}
+</script>
+</body>
+</html>
