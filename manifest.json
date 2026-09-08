@@ -1,0 +1,8 @@
+{
+  "name": "GOJO Maintenance Log",
+  "short_name": "GOJO Maintenance",
+  "start_url": "./gojo-maintenance-log.html",
+  "display": "standalone",
+  "background_color": "#1A4A73",
+  "theme_color": "#1A4A73"
+}
